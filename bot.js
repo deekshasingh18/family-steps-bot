@@ -4,7 +4,20 @@ const qrcode = require('qrcode-terminal');
 class FamilyStepsTracker {
     constructor() {
         this.client = new Client({
-            authStrategy: new LocalAuth()
+            authStrategy: new LocalAuth(),
+            puppeteer: {
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--single-process',
+                    '--disable-gpu'
+                ],
+                headless: true
+            }
         });
         
         // In-memory storage (replace with database for production)
@@ -18,19 +31,37 @@ class FamilyStepsTracker {
     initializeBot() {
         // Generate QR code for authentication
         this.client.on('qr', (qr) => {
+            console.log('QR RECEIVED:', qr);
             console.log('Scan this QR code with WhatsApp:');
             qrcode.generate(qr, { small: true });
         });
 
         this.client.on('ready', () => {
-            console.log('WhatsApp Bot is ready!');
+            console.log('WhatsApp Family Steps Bot is ready!');
+        });
+
+        this.client.on('authenticated', () => {
+            console.log('WhatsApp authenticated successfully!');
+        });
+
+        this.client.on('auth_failure', msg => {
+            console.error('Authentication failed:', msg);
+        });
+
+        this.client.on('disconnected', (reason) => {
+            console.log('WhatsApp disconnected:', reason);
         });
 
         // Handle incoming messages
         this.client.on('message', async (message) => {
-            await this.handleMessage(message);
+            try {
+                await this.handleMessage(message);
+            } catch (error) {
+                console.error('Error handling message:', error);
+            }
         });
 
+        console.log('Starting Family Steps Bot...');
         this.client.initialize();
     }
 
